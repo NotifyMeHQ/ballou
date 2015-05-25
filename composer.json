@@ -6,11 +6,19 @@
     "authors": [
         {
             "name": "James Brooks",
-            "email": "jbrooksuk@me.com"
+            "email": "james@cachethq.io"
+        },
+        {
+            "name": "Graham Campbell",
+            "email": "graham@cachethq.io"
+        },
+        {
+            "name": "Joseph Cohen",
+            "email": "joe@cachethq.io"
         }
     ],
     "require": {
-        "php": ">=5.4.0",
+        "php": ">=5.5.9",
         "guzzlehttp/guzzle": "~5.0",
         "notifymehq/notifyme": "~1.0"
     },
