@@ -153,6 +153,23 @@ class BallouGateway implements GatewayInterface
     }
 
     /**
+     * Get the default json response.
+     *
+     * @param string $rawResponse
+     *
+     * @return array
+     */
+    protected function jsonError($rawResponse)
+    {
+        $msg = 'API Response not valid.';
+        $msg .= " (Raw response API {$rawResponse->getBody()})";
+
+        return [
+            'error' => $msg,
+        ];
+    }
+
+    /**
      * Get the request url.
      *
      * @return string
