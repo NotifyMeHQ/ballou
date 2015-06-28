@@ -29,13 +29,6 @@ class BallouGateway implements GatewayInterface
     protected $endpoint = 'https://sms.ballou.se';
 
     /**
-     * The api version.
-     *
-     * @var string
-     */
-    protected $version = '1';
-
-    /**
      * Create a new ballou gateway instance.
      *
      * @param \GuzzleHttp\Client $client
