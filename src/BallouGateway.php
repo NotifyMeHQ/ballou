@@ -36,20 +36,6 @@ class BallouGateway implements GatewayInterface
     protected $version = '1';
 
     /**
-     * The http client.
-     *
-     * @var \GuzzleHttp\Client
-     */
-    protected $client;
-
-    /**
-     * Configuration options.
-     *
-     * @var string[]
-     */
-    protected $config;
-
-    /**
      * Create a new ballou gateway instance.
      *
      * @param \GuzzleHttp\Client $client
@@ -66,57 +52,39 @@ class BallouGateway implements GatewayInterface
     /**
      * Send a notification.
      *
-     * @param string   $to
-     * @param string   $message
-     * @param string[] $options
+     * @param string $to
+     * @param string $message
      *
      * @return \NotifyMeHQ\Contracts\ResponseInterface
      */
-    public function notify($to, $message, array $options = [])
+    public function notify($to, $message)
     {
-        $params = $this->addMessage($message, $params, $options);
+        $params = [
+            'UN'      => Arr::get($this->config, 'UN', ''),
+            'PW'      => Arr::get($this->config, 'PW', ''),
+            'CR'      => Arr::get($this->config, 'CR', ''),
+            'RI'      => Arr::get($this->config, 'RI', ''),
+            'O'       => urlencode(Arr::get($this->config, 'O', '')),
+            'D'       => Arr::get($this->config, 'D', ''),
+            'LONGSMS' => Arr::get($this->config, 'LONGSMS', ''),
+            'M'       => urlencode($message),
+        ];
 
-        return $this->commit('get', $this->buildUrlFromString('/http/get/SendSms.php'), $params);
-    }
-
-    /**
-     * Add a message to the request.
-     *
-     * @param string   $message
-     * @param string[] $params
-     * @param string[] $options
-     *
-     * @return array
-     */
-    protected function addMessage($message, array $params, array $options)
-    {
-        $params['UN'] = Arr::get($options, 'UN', '');
-        $params['PW'] = Arr::get($options, 'PW', '');
-        $params['CR'] = Arr::get($options, 'CR', '');
-        $params['RI'] = Arr::get($options, 'RI', '');
-        $params['O'] = urlencode(Arr::get($options, 'O', ''));
-        $params['D'] = Arr::get($options, 'D', '');
-        $params['LONGSMS'] = Arr::get($options, 'LONGSMS', '');
-        $params['M'] = urlencode($message);
-
-        return $params;
+        return $this->commit($params);
     }
 
     /**
      * Commit a HTTP request.
      *
-     * @param string   $method
-     * @param string   $url
      * @param string[] $params
-     * @param string[] $options
      *
      * @return mixed
      */
-    protected function commit($method = 'post', $url, array $params = [], array $options = [])
+    protected function commit(array $params)
     {
         $success = false;
 
-        $rawResponse = $this->client->{$method}($url, [
+        $rawResponse = $this->client->get($this->buildUrlFromString('/http/get/SendSms.php'), [
             'exceptions'      => false,
             'timeout'         => '80',
             'connect_timeout' => '30',
@@ -155,7 +123,7 @@ class BallouGateway implements GatewayInterface
     /**
      * Get the default json response.
      *
-     * @param string $rawResponse
+     * @param \GuzzleHttp\Message\Response $rawResponse
      *
      * @return array
      */
