@@ -70,21 +70,22 @@ class BallouGateway implements GatewayInterface
             'M'       => urlencode($message),
         ];
 
-        return $this->commit($params);
+        return $this->commit($this->buildUrlFromString('/http/get/SendSms.php'), $params);
     }
 
     /**
      * Commit a HTTP request.
      *
+     * @param string   $url
      * @param string[] $params
      *
      * @return mixed
      */
-    protected function commit(array $params)
+    protected function commit($url, array $params)
     {
         $success = false;
 
-        $rawResponse = $this->client->get($this->buildUrlFromString('/http/get/SendSms.php'), [
+        $rawResponse = $this->client->get($url, [
             'exceptions'      => false,
             'timeout'         => '80',
             'connect_timeout' => '30',
