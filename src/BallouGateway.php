@@ -19,14 +19,26 @@ use NotifyMeHQ\NotifyMe\Response;
 
 class BallouGateway implements GatewayInterface
 {
-    use HttpGatewayTrait;
-
     /**
      * The api endpoint.
      *
      * @var string
      */
     protected $endpoint = 'https://sms.ballou.se';
+
+    /**
+     * The http client.
+     *
+     * @var \GuzzleHttp\Client
+     */
+    protected $client;
+
+    /**
+     * The configuration options.
+     *
+     * @var string[]
+     */
+    protected $config;
 
     /**
      * Create a new ballou gateway instance.
@@ -53,17 +65,15 @@ class BallouGateway implements GatewayInterface
     public function notify($to, $message)
     {
         $params = [
-            'UN'      => Arr::get($this->config, 'UN', ''),
-            'PW'      => Arr::get($this->config, 'PW', ''),
-            'CR'      => Arr::get($this->config, 'CR', ''),
-            'RI'      => Arr::get($this->config, 'RI', ''),
-            'O'       => urlencode(Arr::get($this->config, 'O', '')),
-            'D'       => Arr::get($this->config, 'D', ''),
+            'UN'      => Arr::get($this->config, 'username', ''),
+            'PW'      => Arr::get($this->config, 'password', ''),
+            'O'       => urlencode(Arr::get($this->config, 'sender', '')),
+            'D'       => Arr::get($this->config, 'D', $to),
             'LONGSMS' => Arr::get($this->config, 'LONGSMS', ''),
-            'M'       => urlencode($message),
+            'M'       => $message,
         ];
 
-        return $this->send($this->buildUrlFromString('/http/get/SendSms.php'), $params);
+        return $this->send($this->buildUrlFromString('http/get/SendSms.php'), array_filter($params));
     }
 
     /**
@@ -78,7 +88,7 @@ class BallouGateway implements GatewayInterface
     {
         $success = false;
 
-        $rawResponse = $this->client->get($url, [
+        $rawResponse = $this->client->get($url.'?'.http_build_query($params), [
             'exceptions'      => false,
             'timeout'         => '80',
             'connect_timeout' => '30',
@@ -86,12 +96,17 @@ class BallouGateway implements GatewayInterface
                 'Accept'       => 'application/xml',
                 'Content-Type' => 'application/x-www-form-urlencoded',
             ],
-            'body' => $params,
         ]);
 
         if ($rawResponse->getStatusCode() == 200) {
+            $success = false;
             $response = $rawResponse->xml();
-            $success = (bool) $response->ballou_smls_response->response->message->attributes()->status;
+
+            if (isset($response->error)) {
+                $response = $this->responseError($rawResponse);
+            } else {
+                $success = $response->response->attributes()->type == 'status';
+            }
         } else {
             $response = $this->responseError($rawResponse);
         }
@@ -102,27 +117,39 @@ class BallouGateway implements GatewayInterface
     /**
      * Map the raw response to our response object.
      *
-     * @param bool  $success
-     * @param array $response
+     * @param bool              $success
+     * @param \SimpleXMLElement $response
      *
      * @return \NotifyMeHQ\Contracts\ResponseInterface
      */
     protected function mapResponse($success, $response)
     {
-        return (new Response())->setRaw($response)->map([
+        return (new Response())->setRaw((array) $response)->map([
             'success' => $success,
-            'message' => $success ? 'Message sent' : implode(', ', $response->ballou_smls_response->response->message->error),
+            'message' => $success ? 'Message sent' : $response->attributes()->error,
         ]);
     }
 
     /**
-     * Get the default json response.
+     * Get error response from server or fallback to general error.
      *
      * @param \GuzzleHttp\Message\ResponseInterface $rawResponse
      *
      * @return array
      */
-    protected function jsonError($rawResponse)
+    protected function responseError($rawResponse)
+    {
+        return $rawResponse->xml() ?: $this->xmlError($rawResponse);
+    }
+
+    /**
+     * Get the default xml response.
+     *
+     * @param \GuzzleHttp\Message\ResponseInterface $rawResponse
+     *
+     * @return array
+     */
+    protected function xmlError($rawResponse)
     {
         $msg = 'API Response not valid.';
         $msg .= " (Raw response API {$rawResponse->getBody()})";
@@ -130,6 +157,22 @@ class BallouGateway implements GatewayInterface
         return [
             'error' => $msg,
         ];
+    }
+
+    /**
+     * Build request url from string.
+     *
+     * @param string|null $endpoint
+     *
+     * @return string
+     */
+    protected function buildUrlFromString($endpoint = null)
+    {
+        if ($endpoint) {
+            return $this->getRequestUrl().'/'.$endpoint;
+        }
+
+        return $this->getRequestUrl();
     }
 
     /**
